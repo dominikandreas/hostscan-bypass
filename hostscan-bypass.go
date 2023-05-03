@@ -12,12 +12,12 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"math/big"
 	"net"
 	"os"
-	"time"
-	"log"
 	"strings"
+	"time"
 )
 
 type TLS struct {
@@ -38,9 +38,9 @@ type Config struct {
 }
 
 type Hostscan struct {
-	UserAgent  string
-	Plat	   string
-	Endpoint   string
+	UserAgent string
+	Plat      string
+	Endpoint  string
 }
 
 var CSD_Script = `#!/bin/bash
@@ -93,9 +93,9 @@ func genCert() ([]byte, *rsa.PrivateKey) {
 		NotAfter:              time.Now().AddDate(10, 0, 0),
 		SubjectKeyId:          []byte{1, 2, 3, 4, 5},
 		BasicConstraintsValid: true,
-		IsCA:        true,
-		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
-		KeyUsage:    x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		IsCA:                  true,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
 	}
 
 	priv, _ := rsa.GenerateKey(rand.Reader, 1024)
@@ -135,9 +135,9 @@ func handleConnection(conn net.Conn, isTLS bool, hostscan Hostscan) {
 				fmt.Println(err)
 				return
 			}
-			conf = tls.Config{InsecureSkipVerify: true, Certificates: []tls.Certificate{cert}}
+			conf = tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS10, Certificates: []tls.Certificate{cert}}
 		} else {
-			conf = tls.Config{InsecureSkipVerify: true}
+			conf = tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS10}
 		}
 		connR, err = tls.Dial("tcp", config.Remotehost, &conf)
 	} else {
@@ -172,17 +172,17 @@ func handleConnection(conn net.Conn, isTLS bool, hostscan Hostscan) {
 				hostscan.Endpoint += ClientReq
 			}
 
-			if strings.Contains(ClientReq, "User-Agent:") && strings.Contains(ClientReq, "X-AnyConnect-Platform:")  {
+			if strings.Contains(ClientReq, "User-Agent:") && strings.Contains(ClientReq, "X-AnyConnect-Platform:") {
 				//fmt.Print(ClientReq)
 				headers := strings.Split(ClientReq, "\r\n")
 
 				for i := range headers {
 					if strings.Contains(headers[i], "User-Agent:") {
-						hostscan.UserAgent = strings.Split(headers[i],": ")[1]
+						hostscan.UserAgent = strings.Split(headers[i], ": ")[1]
 						CSD_Script = strings.Replace(CSD_Script, "<USERAGENT>", hostscan.UserAgent, 1)
 					}
 					if strings.Contains(headers[i], "X-AnyConnect-Platform:") {
-						hostscan.Plat = strings.Split(headers[i],": ")[1]
+						hostscan.Plat = strings.Split(headers[i], ": ")[1]
 						CSD_Script = strings.Replace(CSD_Script, "<PLAT>", hostscan.Plat, 1)
 					}
 				}
